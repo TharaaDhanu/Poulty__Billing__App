@@ -1,0 +1,30 @@
+[
+  {
+    "TABLE_NAME": "transactions",
+    "COLUMN_NAME": "Product_ID",
+    "CONSTRAINT_NAME": "transactions_ibfk_1",
+    "REFERENCED_TABLE_NAME": "products",
+    "REFERENCED_COLUMN_NAME": "Product_ID"
+  },
+  {
+    "TABLE_NAME": "wastage",
+    "COLUMN_NAME": "Product_ID",
+    "CONSTRAINT_NAME": "wastage_ibfk_1",
+    "REFERENCED_TABLE_NAME": "products",
+    "REFERENCED_COLUMN_NAME": "Product_ID"
+  },
+  {
+    "TABLE_NAME": "transactions",
+    "COLUMN_NAME": "Product_ID",
+    "CONSTRAINT_NAME": "transactions_ibfk_1",
+    "REFERENCED_TABLE_NAME": "products",
+    "REFERENCED_COLUMN_NAME": "Product_ID"
+  },
+  {
+    "TABLE_NAME": "wastage",
+    "COLUMN_NAME": "Product_ID",
+    "CONSTRAINT_NAME": "wastage_ibfk_1",
+    "REFERENCED_TABLE_NAME": "products",
+    "REFERENCED_COLUMN_NAME": "Product_ID"
+  }
+]
