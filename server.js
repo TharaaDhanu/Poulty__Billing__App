@@ -38,11 +38,11 @@ const verifyRole = (roles) => {
 };
 
 const pool = mysql.createPool({
-    host: 'mysql.railway.internal',
+    host: 'monorail.proxy.rlwy.net',
     user: 'root',
-    password: 'OtfPqlNcGpuRgEUgJwiDBhsDdTquYDkY',
+    password: 'tgnDJSHLDqtUhyUaHiANYdGVrBtMwcsW',
     database: 'railway',
-    port: 3306
+    port: 46586
 });
 
 pool.getConnection()

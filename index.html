@@ -1295,7 +1295,7 @@
       const username = document.getElementById('username').value;
       const password = document.getElementById('password').value;
 
-      fetch('http://localhost:5000/api/login', {
+      fetch('/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
@@ -1327,7 +1327,7 @@
 
     // ═══ PRODUCTS (shared cache) ═════════════════
     function fetchProducts(cb) {
-      fetch('http://localhost:5000/products')
+      fetch('/products')
         .then(r => r.json()).then(data => {
           productCache = data;
           if (cb) cb(data);
@@ -1389,7 +1389,7 @@
       const dtEl = document.getElementById('wastageFilterDate');
       const dt = dtEl ? dtEl.value : '';
       const q = dt ? `?date=${dt}` : '';
-      fetch(`http://localhost:5000/api/wastage${q}`)
+      fetch(`/api/wastage${q}`)
         .then(r => r.json()).then(data => {
           console.log("Wastage Data:", data); // Requested debug step
           const tb = document.getElementById('wastageHistoryList');
@@ -1456,7 +1456,7 @@
           }
         }
         // Dashboard khata stat
-        fetch('http://localhost:5000/khata').then(r => r.json()).then(d => {
+        fetch('/khata').then(r => r.json()).then(d => {
           const due = d.reduce((s, k) => s + parseFloat(k.Amount_Due || 0), 0);
           const el = document.getElementById('statKhata');
           if (el) el.innerText = '₹' + due.toFixed(2);
@@ -1491,7 +1491,7 @@
       if (unit === 'pcs' && !Number.isInteger(parseFloat(stockVal))) {
         toast('Stock for pieces (pcs) must be a whole number!', 'warn');
       }
-      fetch('http://localhost:5000/add-product', {
+      fetch('/add-product', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: document.getElementById('pname').value, price: document.getElementById('price').value, stock: stockVal, threshold: document.getElementById('threshold').value || 5, unit: unit })
       })
@@ -1503,7 +1503,7 @@
     // ═══ DELETE / EDIT (INLINE) ═══════════════════
     function deleteProduct(id) {
       if (!confirm('Delete this product? (Linked wastage records will also be removed)')) return;
-      fetch(`http://localhost:5000/delete-product/${id}`, { method: 'DELETE' })
+      fetch(`/delete-product/${id}`, { method: 'DELETE' })
         .then(async r => {
           let d; try { d = await r.json() } catch (e) { d = { message: await r.text(), success: r.ok } }
           if (d.success) { toast(d.message || 'Deleted!'); loadProducts(); }
@@ -1534,7 +1534,7 @@
       if (isNaN(price)) { toast('Enter a valid price!', 'err'); return; }
       if (addStock < 0) { toast('Stock value cannot be negative!', 'err'); return; }
       const data = { Price: price, AddStock: addStock };
-      fetch(`http://localhost:5000/update-product/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+      fetch(`/update-product/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
         .then(r => r.json()).then(d => {
           if (d.success) {
             toast(d.message || 'Updated!');
@@ -1557,7 +1557,7 @@
     }
 
     function loadCustomers() {
-      fetch('http://localhost:5000/customers').then(r => r.json()).then(data => {
+      fetch('/customers').then(r => r.json()).then(data => {
         const tb = document.getElementById('customerList'); if (!tb) return;
         tb.innerHTML = '';
         document.getElementById('custTotal').innerText = data.length;
@@ -1576,7 +1576,7 @@
         });
       }).catch(() => { });
 
-      fetch('http://localhost:5000/frequent-customers').then(r => r.json()).then(data => {
+      fetch('/frequent-customers').then(r => r.json()).then(data => {
         const tb = document.getElementById('freqCustomerList');
         const card = document.getElementById('freqCustCard');
         if (!tb || !card) return;
@@ -1599,7 +1599,7 @@
       const phone = document.getElementById('custPhone').value;
       const address = document.getElementById('custAddress').value;
       if (!name) { toast('Enter customer name', 'err'); return; }
-      fetch('http://localhost:5000/add-customer', {
+      fetch('/add-customer', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ Name: name, Phone: phone, Address: address })
       })
@@ -1626,13 +1626,13 @@
       const id = document.getElementById('editCustId').value;
       const data = { Name: document.getElementById('editCustName').value, Phone: document.getElementById('editCustPhone').value, Address: document.getElementById('editCustAddress').value };
       if (!data.Name) { toast('Name is required', 'err'); return; }
-      fetch(`http://localhost:5000/customers/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+      fetch(`/customers/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
         .then(r => r.json()).then(d => { toast(d.message || 'Updated!'); document.getElementById('inlineEditCustomer').style.display = 'none'; loadCustomers(); })
         .catch(() => toast('Update failed', 'err'));
     }
     function deleteCustomer(id) {
       if (!confirm('Delete this customer?')) return;
-      fetch(`http://localhost:5000/customers/${id}`, { method: 'DELETE' })
+      fetch(`/customers/${id}`, { method: 'DELETE' })
         .then(r => r.json()).then(d => {
           if (d.success) { toast(d.message || 'Deleted!'); loadCustomers(); }
           else toast(d.message || 'Cannot delete', 'err');
@@ -1644,13 +1644,13 @@
     let currentCustomerDetails = null;
 
     function fillCustomerSuggestions() {
-      fetch('http://localhost:5000/customers').then(r => r.json()).then(data => {
+      fetch('/customers').then(r => r.json()).then(data => {
         allCustomersList = data;
         const dl = document.getElementById('custSuggestions'); if (!dl) return;
         dl.innerHTML = data.map(c => `<option value="${c.Customer_Name}">`).join('');
       }).catch(() => {
         // Fallback: try khata
-        fetch('http://localhost:5000/khata').then(r => r.json()).then(data => {
+        fetch('/khata').then(r => r.json()).then(data => {
           allCustomersList = data;
           const dl = document.getElementById('custSuggestions'); if (!dl) return;
           dl.innerHTML = data.map(k => `<option value="${k.Customer_Name}">`).join('');
@@ -1662,7 +1662,7 @@
       const v = document.getElementById('billCustName').value.trim();
       const box = document.getElementById('custSuggestBox');
       if (!v) { box.innerHTML = ''; currentCustomerDetails = null; updateCartUI(); return; }
-      fetch('http://localhost:5000/api/customers/search?q=' + encodeURIComponent(v))
+      fetch('/api/customers/search?q=' + encodeURIComponent(v))
         .then(r => r.json())
         .then(data => {
           if (data.length === 0) {
@@ -1890,7 +1890,7 @@
       // Check khata credit limit before allowing
       let khataId = null;
       if (payType === 'khata') {
-        const allK = await fetch('http://localhost:5000/khata').then(r => r.json()).catch(() => []);
+        const allK = await fetch('/khata').then(r => r.json()).catch(() => []);
         const existing = allK.find(k => k.Customer_Name.toLowerCase() === custName.toLowerCase());
         if (existing) {
           khataId = existing.Khata_ID;
@@ -1903,7 +1903,7 @@
       }
 
       try {
-        const res = await fetch('http://127.0.0.1:5000/generate-bill-bulk', {
+        const res = await fetch('/generate-bill-bulk', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ CustomerName: custName, Items: currentCart, TotalAmount: total, PaymentType: payType, KhataID: khataId })
@@ -2088,7 +2088,7 @@
       if (!panel || !list) return;
 
       const query = date ? `?date=${date}` : '';
-      fetch(`http://localhost:5000/transactions/daily-sold${query}`, {
+      fetch(`/transactions/daily-sold${query}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       })
         .then(r => r.json())
@@ -2128,7 +2128,7 @@
       try {
         const token = localStorage.getItem('token');
         const query = selectedDate ? `?date=${selectedDate}` : '';
-        const res = await fetch(`http://localhost:5000/transactions/daily-sold${query}`, {
+        const res = await fetch(`/transactions/daily-sold${query}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();
@@ -2212,7 +2212,7 @@
       if (dateEl && dateEl.value) {
         query = `?date=${dateEl.value}`;
       }
-      fetch(`http://localhost:5000/transactions/daily-sold${query}`, {
+      fetch(`/transactions/daily-sold${query}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       })
         .then(r => r.json())
@@ -2246,7 +2246,7 @@
       const prodName = prodSel.options[prodSel.selectedIndex].text;
       const processedQty = parseFloat(document.getElementById('w_processed_qty').value);
 
-      fetch('http://localhost:5000/api/wastage', {
+      fetch('/api/wastage', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
         body: JSON.stringify({ product_name: prodName, processed_quantity: processedQty, predicted_wastage: qty, estimated_loss: cost, date: selectedDate || undefined })
@@ -2349,7 +2349,7 @@
       }
 
       // Update Stats
-      fetch(`http://localhost:5000/sales-report${q}`).then(r => r.json()).then(d => {
+      fetch(`/sales-report${q}`).then(r => r.json()).then(d => {
         const s = parseFloat(d.Totalsales) || 0, w = parseFloat(d.TotalWaste) || 0, p = parseFloat(d.Profit) || 0;
         // Dashboard
         const stS = document.getElementById('statSales'); if (stS) stS.innerText = '₹' + s.toFixed(2);
@@ -2363,7 +2363,7 @@
       }).catch(() => { });
 
       // Update Table
-      fetch(`http://localhost:5000/bills-report${q}`).then(r => r.json()).then(data => {
+      fetch(`/bills-report${q}`).then(r => r.json()).then(data => {
         const tb = document.getElementById('dailyReportTable');
         if (!tb) return;
         tb.innerHTML = '';
@@ -2438,7 +2438,7 @@
       const token = localStorage.getItem('token');
       if (!token) { toast('Please login again', 'err'); return; }
 
-      fetch(`http://localhost:5000/reports/download${q}`, {
+      fetch(`/reports/download${q}`, {
         method: 'GET',
         headers: { 'Authorization': `Bearer ${token}` }
       })
@@ -2493,12 +2493,12 @@
       });
       if (isMain) myChart = chart; else dashChartRef = chart;
     }
-    function loadReportChart() { fetch('http://localhost:5000/sales-report-date').then(r => r.json()).then(d => { if (d?.length) renderChart('salesChart', d, true); }).catch(console.error); }
-    function loadDashChart() { fetch('http://localhost:5000/sales-report-date').then(r => r.json()).then(d => { if (d?.length) renderChart('dashChart', d, false); }).catch(console.error); }
+    function loadReportChart() { fetch('/sales-report-date').then(r => r.json()).then(d => { if (d?.length) renderChart('salesChart', d, true); }).catch(console.error); }
+    function loadDashChart() { fetch('/sales-report-date').then(r => r.json()).then(d => { if (d?.length) renderChart('dashChart', d, false); }).catch(console.error); }
 
     // ═══ KHATA ═══════════════════════════════════
     function loadKhata() {
-      fetch('http://localhost:5000/khata').then(r => r.json()).then(async data => {
+      fetch('/khata').then(r => r.json()).then(async data => {
         const tb = document.getElementById('khataList'); if (!tb) return;
         tb.innerHTML = '';
         let totalDue = 0, overCount = 0;
@@ -2513,7 +2513,7 @@
           // Fetch total billed and paid for this account
           let totalBilled = 0, totalPaid = 0;
           try {
-            const detail = await fetch(`http://localhost:5000/khata/${k.Khata_ID}`).then(r => r.json());
+            const detail = await fetch(`/khata/${k.Khata_ID}`).then(r => r.json());
             const txns = detail.transactions || [];
             txns.forEach(t => {
               totalBilled += parseFloat(t.Bill_Amount || 0);
@@ -2550,7 +2550,7 @@
       const phone = document.getElementById('kPhone').value;
       const limit = document.getElementById('kLimit').value || 5000;
       if (!name) { toast('Enter customer name', 'err'); return; }
-      fetch('http://localhost:5000/khata', {
+      fetch('/khata', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ CustomerName: name, Phone: phone, CreditLimit: limit })
       })
@@ -2579,7 +2579,7 @@
       const amt = parseFloat(document.getElementById('payKhataAmt').value);
       const note = document.getElementById('payKhataNote').value || 'Payment received';
       if (!id || isNaN(amt) || amt <= 0) { toast('Enter a valid payment amount', 'err'); return; }
-      fetch(`http://localhost:5000/khata/${id}/pay`, {
+      fetch(`/khata/${id}/pay`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ Amount: amt, Note: note })
       })
@@ -2592,7 +2592,7 @@
     }
     function deleteKhata(id) {
       if (!confirm('Delete this Khata account? (Only allowed if dues are cleared)')) return;
-      fetch(`http://localhost:5000/khata/${id}`, { method: 'DELETE' })
+      fetch(`/khata/${id}`, { method: 'DELETE' })
         .then(r => r.json()).then(d => {
           if (d.success) { toast(d.message || 'Deleted!'); loadKhata(); }
           else toast(d.message || 'Cannot delete', 'err');
@@ -2605,7 +2605,7 @@
     }
 
     function openKhataDetail(id) {
-      fetch(`http://localhost:5000/khata/${id}`).then(r => r.json()).then(d => {
+      fetch(`/khata/${id}`).then(r => r.json()).then(d => {
         const k = d.account;
         const txns = d.transactions || [];
         const due = parseFloat(k.Amount_Due || 0);
@@ -2653,14 +2653,14 @@
 
     // ═══ SHOP SETTINGS ═══════════════════════════
     function fetchShopSettings() {
-      fetch('http://localhost:5000/settings')
+      fetch('/settings')
         .then(r => r.json()).then(d => {
           shopSettings = d;
         }).catch(() => { });
     }
 
     function loadSettings() {
-      fetch('http://localhost:5000/settings')
+      fetch('/settings')
         .then(r => r.json()).then(d => {
           shopSettings = d;
           document.getElementById('set_shop_name').value = d.shop_name || '';
@@ -2694,7 +2694,7 @@
         gst_number: document.getElementById('set_gst').value
       };
       if (!data.shop_name || !data.phone) { toast('Shop Name and Phone are required!', 'err'); return; }
-      fetch('http://localhost:5000/settings', {
+      fetch('/settings', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
       })
