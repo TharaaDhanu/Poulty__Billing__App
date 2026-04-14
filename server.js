@@ -49,20 +49,22 @@ pool.getConnection()
     .then(async (conn) => {
         console.log("✅ MySQL Database Connected!");
         conn.release();
+
         // Auto-migrate: ensure all required columns & tables exist
+        // Function to safely add columns (ignores "duplicate column" errors)
+        const addColumnSafely = async (table, definition) => {
+            try {
+                await pool.query(`ALTER TABLE ${table} ADD COLUMN ${definition}`);
+                console.log(`  ✔ ${table} column added: ${definition.split(' ')[0]}`);
+            } catch (e) {
+                if (!e.message.includes('Duplicate column name')) {
+                    console.log(`  ⚠ ${table} column check failed:`, e.message);
+                }
+            }
+        };
+
         try {
-            await pool.query(`ALTER TABLE transactions DROP FOREIGN KEY transactions_ibfk_1`);
-            await pool.query(`ALTER TABLE transactions ADD CONSTRAINT transactions_ibfk_1 FOREIGN KEY (Product_ID) REFERENCES Products(Product_ID) ON DELETE SET NULL`);
-            console.log('  ✔ transactions ON DELETE SET NULL applied');
-        } catch(e) { console.log('  ⚠ transactions FK update skipped:', e.message); }
-        
-        try {
-            await pool.query(`ALTER TABLE Wastage DROP FOREIGN KEY wastage_ibfk_1`);
-            await pool.query(`ALTER TABLE Wastage ADD CONSTRAINT wastage_ibfk_1 FOREIGN KEY (Product_ID) REFERENCES Products(Product_ID) ON DELETE SET NULL`);
-        } catch(e) {}
-        
-        try {
-            // STEP 1: Reset Users Table (Lowercase as requested)
+            // Ensure tables exist before adding columns
             await pool.query(`CREATE TABLE IF NOT EXISTS users (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 username VARCHAR(255) UNIQUE NOT NULL,
@@ -70,63 +72,43 @@ pool.getConnection()
                 role VARCHAR(50) DEFAULT 'admin'
             )`);
             
-            // Delete old data and insert clean users
-            await pool.query(`DELETE FROM users`);
-            await pool.query(`INSERT INTO users (username, password, role) VALUES (?, ?, ?), (?, ?, ?)`, 
-                ['admin', 'admin123', 'admin', 'staff', 'staff123', 'staff']);
-                
-            console.log('  ✔ Plain-text users table reset and seeded');
+            // Re-seed users if needed
+            const [rows] = await pool.query(`SELECT COUNT(*) as count FROM users`);
+            if (rows[0].count === 0) {
+                await pool.query(`INSERT INTO users (username, password, role) VALUES (?, ?, ?), (?, ?, ?)`, 
+                    ['admin', 'admin123', 'admin', 'staff', 'staff123', 'staff']);
+                console.log('  ✔ Users table seeded');
+            }
         } catch(e) { console.error('  ⚠ Users setup failed:', e.message); }
-        
-        try {
-            await pool.query(`USE poultrybillingdb`);
-            console.log("Ensuring wastage table...");
-            await pool.query(`CREATE TABLE IF NOT EXISTS wastage (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  product_name VARCHAR(255),
-  processed_quantity DECIMAL(10,2),
-  predicted_wastage DECIMAL(10,2),
-  estimated_loss DECIMAL(10,2),
-  source VARCHAR(50),
-  date DATE DEFAULT (CURRENT_DATE),
-  time TIME DEFAULT (CURRENT_TIME)
-) ENGINE=InnoDB`);
-            console.log('  ✔ Wastage table ensured (no drop)');
-            
-            // Add time column if missing (for existing tables)
-            try {
-                await pool.query(`ALTER TABLE wastage ADD COLUMN IF NOT EXISTS time TIME DEFAULT (CURRENT_TIME)`);
-                console.log('  ✔ Wastage.time column ensured');
-            } catch(e) { console.log('  ⚠ Wastage.time column already exists or skipped'); }
-            
-            try {
-                await pool.query(`CREATE INDEX idx_wastage_date ON wastage(date)`);
-            } catch(e) {}
-        } catch(e) { console.log('  ⚠ Wastage table check skipped:', e.message); }
 
         try {
-            console.log("Checking wastage columns...");
-            await pool.query(`SHOW COLUMNS FROM wastage`);
+            await pool.query(`CREATE TABLE IF NOT EXISTS wastage (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                product_name VARCHAR(255),
+                processed_quantity DECIMAL(10,2),
+                predicted_wastage DECIMAL(10,2),
+                estimated_loss DECIMAL(10,2),
+                source VARCHAR(50),
+                date DATE DEFAULT (CURRENT_DATE)
+            ) ENGINE=InnoDB`);
+            console.log('  ✔ Wastage table ensured');
             
-            await pool.query(`ALTER TABLE Wastage ADD COLUMN IF NOT EXISTS Loss_Amount DECIMAL(10,2) DEFAULT 0`);
-            await pool.query(`ALTER TABLE wastage ADD COLUMN IF NOT EXISTS Date TIMESTAMP DEFAULT CURRENT_TIMESTAMP`);
-            await pool.query(`ALTER TABLE wastage ADD COLUMN IF NOT EXISTS Source VARCHAR(50) DEFAULT 'MANUAL'`);
-            await pool.query(`ALTER TABLE wastage ADD COLUMN IF NOT EXISTS Product_ID INT`);
-            await pool.query(`ALTER TABLE wastage ADD COLUMN IF NOT EXISTS Quantity DECIMAL(10,2)`);
-            await pool.query(`ALTER TABLE wastage ADD COLUMN IF NOT EXISTS Reason VARCHAR(255)`);
-            console.log('  ✔ Wastage columns ensured');
-        } catch(e) { console.log('  ⚠ Wastage column checks skipped:', e.message); }
+            await addColumnSafely('wastage', 'time TIME DEFAULT (CURRENT_TIME)');
+            await addColumnSafely('wastage', 'Loss_Amount DECIMAL(10,2) DEFAULT 0');
+            await addColumnSafely('wastage', 'Source VARCHAR(50) DEFAULT "MANUAL"');
+            await addColumnSafely('wastage', 'Product_ID INT');
+            await addColumnSafely('wastage', 'Quantity DECIMAL(10,2)');
+            await addColumnSafely('wastage', 'Reason VARCHAR(255)');
+        } catch(e) { console.log('  ⚠ Wastage table check failed:', e.message); }
+
         try {
-            await pool.query(`ALTER TABLE Products ADD COLUMN IF NOT EXISTS unit VARCHAR(20) DEFAULT 'kg'`);
-            // Auto-assign units based on product name for existing records
+            await addColumnSafely('Products', 'unit VARCHAR(20) DEFAULT "kg"');
+            await addColumnSafely('Products', 'Low_Stock_Threshold DECIMAL(10,2) DEFAULT 5');
+            
             await pool.query(`UPDATE Products SET unit = 'pcs' WHERE (LOWER(Product_Name) LIKE '%egg%' OR LOWER(Product_Name) LIKE '%masala egg%') AND (unit IS NULL OR unit = 'kg')`);
             await pool.query(`UPDATE Products SET unit = 'kg' WHERE unit IS NULL`);
-            console.log('  ✔ Products.unit column ensured');
-        } catch(e) { console.log('  ⚠ Products.unit check skipped:', e.message); }
-        try {
-            await pool.query(`ALTER TABLE Products ADD COLUMN IF NOT EXISTS Low_Stock_Threshold DECIMAL(10,2) DEFAULT 5`);
-            console.log('  ✔ Products.Low_Stock_Threshold column ensured');
-        } catch(e) { console.log('  ⚠ Products.Low_Stock_Threshold check skipped:', e.message); }
+        } catch(e) { console.log('  ⚠ Products columns update failed:', e.message); }
+
         try {
             await pool.query(`CREATE TABLE IF NOT EXISTS Customers (
                 Customer_ID INT AUTO_INCREMENT PRIMARY KEY,
@@ -135,11 +117,10 @@ pool.getConnection()
                 Address VARCHAR(255) DEFAULT '',
                 Created_At TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )`);
-            console.log('  ✔ Customers table ensured');
-
-            await pool.query('ALTER TABLE Customers ADD COLUMN IF NOT EXISTS total_orders INT DEFAULT 0');
-            await pool.query('ALTER TABLE Customers ADD COLUMN IF NOT EXISTS total_spent DECIMAL(10,2) DEFAULT 0');
-            await pool.query('ALTER TABLE Customers ADD COLUMN IF NOT EXISTS customer_type VARCHAR(20) DEFAULT "Regular"');
+            
+            await addColumnSafely('Customers', 'total_orders INT DEFAULT 0');
+            await addColumnSafely('Customers', 'total_spent DECIMAL(10,2) DEFAULT 0');
+            await addColumnSafely('Customers', 'customer_type VARCHAR(20) DEFAULT "Regular"');
             
             await pool.query(`
               UPDATE Customers c
@@ -154,8 +135,9 @@ pool.getConnection()
                 c.total_orders = IFNULL(t.total_orders, 0),
                 c.total_spent = IFNULL(t.total_spent, 0)
             `);
-            console.log('  ✔ Customers total_orders and total_spent synced from bills');
-        } catch(e) { console.log('  ⚠ Customers table/sync skipped:', e.message); }
+            console.log('  ✔ Customers stats synced');
+        } catch(e) { console.log('  ⚠ Customers sync failed:', e.message); }
+
         try {
             await pool.query(`CREATE TABLE IF NOT EXISTS Khata (
                 Khata_ID INT AUTO_INCREMENT PRIMARY KEY,
@@ -165,8 +147,8 @@ pool.getConnection()
                 Amount_Due DECIMAL(10,2) DEFAULT 0.00,
                 Last_Updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
             )`);
-            console.log('  ✔ Khata table ensured');
-        } catch(e) { console.log('  ⚠ Khata table check skipped:', e.message); }
+        } catch(e) {}
+
         try {
             await pool.query(`CREATE TABLE IF NOT EXISTS Khata_Transactions (
                 Txn_ID INT AUTO_INCREMENT PRIMARY KEY,
@@ -174,11 +156,18 @@ pool.getConnection()
                 Bill_Amount DECIMAL(10,2) DEFAULT 0.00,
                 Payment_Amount DECIMAL(10,2) DEFAULT 0.00,
                 Note VARCHAR(255) DEFAULT '',
-                Txn_Date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (Khata_ID) REFERENCES Khata(Khata_ID) ON DELETE CASCADE
+                Txn_Date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )`);
-            console.log('  ✔ Khata_Transactions table ensured');
-        } catch(e) { console.log('  ⚠ Khata_Transactions table check skipped:', e.message); }
+            
+            // Add foreign key only if it doesn't exist (using a safe drop/add pattern)
+            try {
+                await pool.query(`ALTER TABLE Khata_Transactions DROP FOREIGN KEY Khata_Transactions_ibfk_1`);
+            } catch(e) {}
+            await pool.query(`ALTER TABLE Khata_Transactions ADD CONSTRAINT Khata_Transactions_ibfk_1 FOREIGN KEY (Khata_ID) REFERENCES Khata(Khata_ID) ON DELETE CASCADE`);
+            
+            console.log('  ✔ Khata_Transactions schema ensured');
+        } catch(e) { console.log('  ⚠ Khata_Transactions check failed:', e.message); }
+
         try {
             await pool.query(`CREATE TABLE IF NOT EXISTS Shop_Settings (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -190,8 +179,8 @@ pool.getConnection()
                 gst_number VARCHAR(50) DEFAULT '',
                 logo_url VARCHAR(500) DEFAULT ''
             )`);
-            console.log('  ✔ Shop_Settings table ensured');
-        } catch(e) { console.log('  ⚠ Shop_Settings table check skipped:', e.message); }
+        } catch(e) {}
+
         console.log('✅ Auto-migration complete.');
     })
     .catch(err => console.error("❌ MySQL Connection Failed:", err.message));
