@@ -64,7 +64,37 @@ pool.getConnection()
         };
 
         try {
-            // Ensure tables exist before adding columns
+            // Ensure CORE tables exist first
+            await pool.query(`CREATE TABLE IF NOT EXISTS Products (
+                Product_ID INT AUTO_INCREMENT PRIMARY KEY,
+                Product_Name VARCHAR(255) NOT NULL,
+                Price DECIMAL(10,2) NOT NULL,
+                Stock_Quantity DECIMAL(10,2) NOT NULL DEFAULT 0,
+                Low_Stock_Threshold DECIMAL(10,2) DEFAULT 5
+            ) ENGINE=InnoDB`);
+
+            await pool.query(`CREATE TABLE IF NOT EXISTS bills (
+                Bill_ID INT AUTO_INCREMENT PRIMARY KEY,
+                Customer_Name VARCHAR(255),
+                Total_Amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+                Date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB`);
+
+            await pool.query(`CREATE TABLE IF NOT EXISTS transactions (
+                Transaction_ID INT AUTO_INCREMENT PRIMARY KEY,
+                Customer_Name VARCHAR(100),
+                Product_ID INT DEFAULT NULL,
+                Quantity DECIMAL(10,2) NOT NULL,
+                Total_Price DECIMAL(10,2) NOT NULL,
+                Transaction_Date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (Product_ID) REFERENCES Products(Product_ID) ON DELETE SET NULL
+            ) ENGINE=InnoDB`);
+
+            console.log('  ✔ Core tables (Products, bills, transactions) ensured');
+        } catch(e) { console.log('  ⚠ Core table creation failed:', e.message); }
+
+        try {
+            // Ensure users table before adding columns
             await pool.query(`CREATE TABLE IF NOT EXISTS users (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 username VARCHAR(255) UNIQUE NOT NULL,

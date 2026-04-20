@@ -1238,7 +1238,8 @@
     const origFetch = window.fetch;
     window.fetch = async (...args) => {
       let [resource, config] = args;
-      if (typeof resource === 'string' && resource.startsWith('http')) {
+      // Attach token for ALL string URLs (relative /api/... paths AND absolute http... URLs)
+      if (typeof resource === 'string') {
         config = config || {};
         config.headers = config.headers || {};
         const token = localStorage.getItem('token');
@@ -1248,9 +1249,13 @@
       }
       const response = await origFetch(resource, config);
       if (response.status === 401 || response.status === 403) {
-        if (resource.includes('/login')) return response;
-        toast('Session expired or access denied!', 'err');
-        document.getElementById('lo').style.display = 'flex';
+        if (typeof resource === 'string' && resource.includes('/login')) return response;
+        // Only show login screen if we have no token (genuine session loss)
+        if (!localStorage.getItem('token')) {
+          document.getElementById('lo').style.display = 'flex';
+        } else {
+          toast('Access denied or session expired. Please re-login.', 'err');
+        }
       }
       return response;
     };
