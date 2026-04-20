@@ -407,7 +407,7 @@ app.post('/generate-bill-bulk', verifyToken, async (req, res) => {
         const billId = result.insertId; // Capture the real Bill_ID
         for (const item of Items) {
             await pool.query(
-                'UPDATE products SET Stock_Quantity = Stock_Quantity - ? WHERE Product_ID = ?',
+                'UPDATE Products SET Stock_Quantity = Stock_Quantity - ? WHERE Product_ID = ?',
                 [item.qty, item.id]
             );
             await pool.query(
@@ -599,7 +599,7 @@ app.get('/transactions/daily-sold', verifyToken, async (req, res) => {
         const query = `
             SELECT p.Product_Name as product_name, p.Product_ID as product_id, SUM(t.Quantity) AS total_sold
             FROM transactions t
-            JOIN products p ON t.Product_ID = p.Product_ID
+            JOIN Products p ON t.Product_ID = p.Product_ID
             WHERE DATE(t.Transaction_Date) = ${date ? '?' : 'CURDATE()'}
             GROUP BY p.Product_ID, p.Product_Name
             ORDER BY total_sold DESC
@@ -661,7 +661,7 @@ app.get('/sales-detail', verifyToken, async (req, res) => {
             SELECT b.Customer_Name, b.Total_Amount, b.Date,
                    COALESCE(p.Product_Name, 'Deleted Product') as Product_Name, p.Stock_Quantity as Remaining_Stock
             FROM bills b
-            LEFT JOIN products p ON 1=1
+            LEFT JOIN Products p ON 1=1
             GROUP BY b.Bill_ID, p.Product_ID
             ORDER BY b.Date DESC LIMIT 50
         `);
