@@ -2209,14 +2209,11 @@
 
     function loadDailySoldProducts() {
       const dateEl = document.getElementById('dailySoldDate');
-      if (dateEl && !dateEl.value) {
-        const tzOffset = (new Date()).getTimezoneOffset() * 60000;
-        dateEl.value = (new Date(Date.now() - tzOffset)).toISOString().slice(0, 10);
-      }
-      let query = '';
-      if (dateEl && dateEl.value) {
-        query = `?date=${dateEl.value}`;
-      }
+      // If user has manually selected a date, use it; otherwise let server use CURDATE()
+      // This avoids timezone mismatch between browser clock and DB server clock
+      const userDate = dateEl ? dateEl.value : '';
+      const query = userDate ? `?date=${userDate}` : '';
+
       fetch(`/transactions/daily-sold${query}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       })
@@ -2224,6 +2221,21 @@
         .then(data => {
           const list = document.getElementById('dailySoldList');
           if (!list) return;
+
+          // Sync the date picker to the server's current date (from response header or first record)
+          // so the displayed date matches what the DB server considers "today"
+          if (dateEl && !dateEl.value) {
+            // Fetch server date by calling a lightweight endpoint
+            fetch('/api/server-date', { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } })
+              .then(r => r.json())
+              .then(d => { if (d.date) dateEl.value = d.date; })
+              .catch(() => {
+                // Fallback: use local date
+                const tzOffset = (new Date()).getTimezoneOffset() * 60000;
+                dateEl.value = (new Date(Date.now() - tzOffset)).toISOString().slice(0, 10);
+              });
+          }
+
           if (!data || data.length === 0) {
             list.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--dim)">No products sold on this date.</td></tr>';
             return;

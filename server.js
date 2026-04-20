@@ -582,11 +582,20 @@ app.get('/wastage/predict-auto', verifyToken, verifyRole(['admin']), async (req,
     }
 });
 
+// ── 7.4 SERVER DATE (for timezone sync) ──────────
+app.get('/api/server-date', verifyToken, async (req, res) => {
+    try {
+        const [[row]] = await pool.query('SELECT CURDATE() as date');
+        res.json({ date: row.date });
+    } catch (err) {
+        res.status(500).json({ error: 'Could not fetch server date' });
+    }
+});
+
 // ── 7.5 DAILY SOLD INVENTORY ─────────────────────
 app.get('/transactions/daily-sold', verifyToken, async (req, res) => {
     try {
         const { date } = req.query;
-        const dateFilter = date ? '?' : null;
         const query = `
             SELECT p.Product_Name as product_name, p.Product_ID as product_id, SUM(t.Quantity) AS total_sold
             FROM transactions t
